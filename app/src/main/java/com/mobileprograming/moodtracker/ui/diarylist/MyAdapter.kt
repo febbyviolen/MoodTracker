@@ -31,6 +31,7 @@ class MyAdapter (val diaryList:MutableList<Diary>)
         val imageNum = diaryList[position].mood
         var emotionDraw: Int? = null
         when (imageNum) {
+            0 -> emotionDraw = R.drawable.sohappy_0
             1 -> emotionDraw = R.drawable.happy_1
             2 -> emotionDraw = R.drawable.ok_2
             3 -> emotionDraw = R.drawable.sad_4
@@ -72,6 +73,19 @@ class MyAdapter (val diaryList:MutableList<Diary>)
         val formatStr = y.toString() + "." + m.toString() + "." + d.toString()
         val date = sdf.parse(formatStr)
         val ldate = date.time
+        if(diaryList.size == 0){
+            val localDate = LocalDate.now()
+            val y = localDate.year
+            val m = localDate.monthValue
+            val d = localDate.dayOfMonth
+            val sdf = SimpleDateFormat("yyyy.MM.dd")
+            val formatStr = y.toString() + "." + m.toString() + "." + d.toString()
+            val date = sdf.parse(formatStr)
+            val ldate = date.time
+            notifyDataSetChanged()
+            diaryList.add(database.getDiary(ldate)[0])
+            return
+        }
         when(diaryList[0].date){
             ldate -> {
                 diaryList[0]=database.getDiary(ldate)[0]
