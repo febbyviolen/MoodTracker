@@ -22,8 +22,8 @@ import com.mobileprograming.moodtracker.data.MyDBHelper
 import com.mobileprograming.moodtracker.databinding.ActivityWritingBinding
 import com.mobileprograming.moodtracker.util.IntentKey
 import java.io.ByteArrayOutputStream
-import java.time.LocalDate
 import java.text.SimpleDateFormat
+import java.time.LocalDate
 
 
 class WritingActivity : AppCompatActivity() {
@@ -39,6 +39,25 @@ class WritingActivity : AppCompatActivity() {
     private val PERMISSION_CODE = 2
     private var imageUri: Uri? = null
     var byteArray: ByteArray? = null
+
+//    0608추가
+private fun imagemTratada(imagem_img: ByteArray): ByteArray? {
+    var imagem_img = imagem_img
+    while (imagem_img.size > 500000) {
+        val bitmap = BitmapFactory.decodeByteArray(imagem_img, 0, imagem_img.size)
+        val resized = Bitmap.createScaledBitmap(
+            bitmap,
+            (bitmap.width * 0.8).toInt(),
+            (bitmap.height * 0.8).toInt(),
+            true
+        )
+        val stream = ByteArrayOutputStream()
+        resized.compress(Bitmap.CompressFormat.PNG, 100, stream)
+        imagem_img = stream.toByteArray()
+    }
+    return imagem_img
+}
+//    0608추가
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -270,8 +289,10 @@ class WritingActivity : AppCompatActivity() {
                 val bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, imageUri)
                 val stream = ByteArrayOutputStream()
                 bitmap.compress(Bitmap.CompressFormat.PNG, 90, stream)
-                byteArray = stream.toByteArray()
-
+//                byteArray = stream.toByteArray() 0608주석처리
+//                0608추가
+                byteArray = imagemTratada(stream.toByteArray())//500kb이상이면 압축
+//                  0608추가
             }
         }
     }
