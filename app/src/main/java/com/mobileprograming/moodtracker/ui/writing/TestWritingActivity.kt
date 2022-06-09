@@ -4,41 +4,61 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.drawable.ColorDrawable
 import android.net.Uri
 import android.os.Build
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.provider.MediaStore
 import android.view.LayoutInflater
 import android.widget.LinearLayout
 import android.widget.Toast
 import androidx.annotation.RequiresApi
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.view.setPadding
 import com.mobileprograming.moodtracker.R
 import com.mobileprograming.moodtracker.data.Diary
 import com.mobileprograming.moodtracker.data.MyDBHelper
 import com.mobileprograming.moodtracker.databinding.ActivityTestWritingBinding
 import com.mobileprograming.moodtracker.databinding.ActivityWritingBinding
-import com.mobileprograming.moodtracker.ui.calendar.CalendarActivity
 import com.mobileprograming.moodtracker.util.IntentKey
 import java.io.ByteArrayOutputStream
 import java.text.SimpleDateFormat
 import java.time.LocalDate
 
+
 class TestWritingActivity : AppCompatActivity() {
 
-    lateinit var binding: ActivityTestWritingBinding
-    lateinit var myDBHelper: MyDBHelper
+    lateinit var binding:ActivityTestWritingBinding
+    lateinit var myDBHelper:MyDBHelper
 
     // 테스트용 초기 mood 값
     var mood = 0
 
     //사진 관련 variable
-    private val IMAGE_CHOOSE = 1;
-    private val PERMISSION_CODE = 2;
+    private val IMAGE_CHOOSE = 1
+    private val PERMISSION_CODE = 2
     private var imageUri: Uri? = null
     var byteArray: ByteArray? = null
+
+    //    0608추가
+    private fun imagemTratada(imagem_img: ByteArray): ByteArray? {
+        var imagem_img = imagem_img
+        while (imagem_img.size > 500000) {
+            val bitmap = BitmapFactory.decodeByteArray(imagem_img, 0, imagem_img.size)
+            val resized = Bitmap.createScaledBitmap(
+                bitmap,
+                (bitmap.width * 0.8).toInt(),
+                (bitmap.height * 0.8).toInt(),
+                true
+            )
+            val stream = ByteArrayOutputStream()
+            resized.compress(Bitmap.CompressFormat.PNG, 100, stream)
+            imagem_img = stream.toByteArray()
+        }
+        return imagem_img
+    }
+//    0608추가
 
     @RequiresApi(Build.VERSION_CODES.O)
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,17 +70,20 @@ class TestWritingActivity : AppCompatActivity() {
         binding = ActivityTestWritingBinding.inflate(layoutInflater)
         setContentView(binding.root)
         initDB()
-        initLayout()
 
         // 아래 함수를 통해 무드를 전달받습니다.
-        mood = intent.getIntExtra(IntentKey.MOOD_KEY,0)
+        mood = intent.getIntExtra(IntentKey.MOOD_KEY, 0)
         emoticonSelector(mood)
+
+        initLayout()
 
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun initLayout() {
         with(binding){
+
+            getDiary()
 
             //back button
             backButton.setOnClickListener {
@@ -102,6 +125,34 @@ class TestWritingActivity : AppCompatActivity() {
             //취소 버튼
             cancelButton.setOnClickListener {
                 onBackPressed()
+            }
+        }
+
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun getDiary() {
+        with(binding) {
+            val ldate = saveTime()
+            var diary = myDBHelper.getDiary(ldate)
+            if (diary.isNotEmpty()) {
+                mood = diary[0].mood
+                mood = intent.getIntExtra(IntentKey.MOOD_KEY, mood)
+                emoticonSelector(mood)
+
+                diaryText.setText(diary[0].content)
+
+                byteArray = diary[0].image
+                if (byteArray != null) {
+                    diaryPhoto.setImageBitmap(
+                        BitmapFactory.decodeByteArray(
+                            byteArray,
+                            0,
+                            byteArray!!.size
+                        )
+                    )
+                    diaryPhoto.setAdjustViewBounds(true);
+                }
             }
         }
 
@@ -180,18 +231,15 @@ class TestWritingActivity : AppCompatActivity() {
         // 이미지 비트맵 가져오기 ( 예시, R.drawable.happy_1 )
         //val bitmap = ResourcesCompat.getDrawable(resources, R.drawable.test, null)?.toByteA()
 
+//        val time = saveTime()
         val sdf = SimpleDateFormat("yyyy.MM.dd")
         val formatStr = binding.editYear.text.toString() + "." + binding.editMonth.text.toString() + "." + binding.editDay.text.toString()
         val date = sdf.parse(formatStr)
         val time = date.time
-
         // 다이어리 객체 생성
         val diary = Diary(time, mood, binding.diaryText.text.toString(), byteArray)
 
         myDBHelper.insert(diary)
-//        val intent = Intent(this, CalendarActivity::class.java)
-//        intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)
-//        startActivity(intent)
         finish()
     }
 
@@ -214,7 +262,7 @@ class TestWritingActivity : AppCompatActivity() {
 
         chooseImageButton.setOnClickListener {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M){
-                if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)== PackageManager.PERMISSION_DENIED){
+                if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE)==PackageManager.PERMISSION_DENIED){
                     val permissions = arrayOf(Manifest.permission.READ_EXTERNAL_STORAGE)
                     requestPermissions(permissions, PERMISSION_CODE)
                 } else{
@@ -240,13 +288,16 @@ class TestWritingActivity : AppCompatActivity() {
         when (requestCode) {
             IMAGE_CHOOSE -> if (resultCode == RESULT_OK) {
                 imageUri = data?.data
+                binding.diaryPhoto.setAdjustViewBounds(true);
                 binding.diaryPhoto.setImageURI(imageUri)
                 //Uri -> ByteArray
                 val bitmap = MediaStore.Images.Media.getBitmap(this.contentResolver, imageUri)
                 val stream = ByteArrayOutputStream()
                 bitmap.compress(Bitmap.CompressFormat.PNG, 90, stream)
-                byteArray = stream.toByteArray()
-
+//                byteArray = stream.toByteArray() 0608주석처리
+//                0608추가
+                byteArray = imagemTratada(stream.toByteArray())//500kb이상이면 압축
+//                  0608추가
             }
         }
     }

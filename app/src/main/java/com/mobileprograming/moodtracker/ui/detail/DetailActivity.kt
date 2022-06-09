@@ -33,6 +33,9 @@ class DetailActivity : AppCompatActivity() {
                 val imageNum=diary[0].mood
                 var emotionDraw: Int?=null
                 when(imageNum){
+                    //0608추가
+                    0 -> emotionDraw = R.drawable.sohappy_0
+                    //0608추가
                     1 -> emotionDraw = R.drawable.happy_1
                     2 -> emotionDraw=R.drawable.ok_2
                     3 -> emotionDraw=R.drawable.sad_4
